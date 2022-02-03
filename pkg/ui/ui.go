@@ -30,11 +30,11 @@ import (
 	_ "github.com/shurcooL/vfsgen"
 )
 
-func Handler() http.Handler {
+func Handler(externalURL *string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/graph", http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("%s/graph", *externalURL), http.StatusFound)
 	})
 
 	// Serve UI index.

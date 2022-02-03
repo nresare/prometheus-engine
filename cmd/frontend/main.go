@@ -58,6 +58,12 @@ var (
 
 	targetURLStr = flag.String("query.target-url", fmt.Sprintf("https://monitoring.googleapis.com/v1/projects/%s/location/global/prometheus", projectIDVar),
 		fmt.Sprintf("The URL to forward authenticated requests to. (%s is replaced with the --project-id flag.)", projectIDVar))
+
+	externalURL = flag.String("web.external-url", "",
+		"The URL under which Prometheus is externally reachable (for example, if Prometheus is served via a reverse proxy). "+
+			"Used for generating relative and absolute links back to Prometheus itself. "+
+			"If the URL has a path portion, it will be used to prefix all HTTP endpoints served by Prometheus. "+
+			"If omitted, relevant URL components will be derived automatically.")
 )
 
 func main() {
@@ -130,7 +136,7 @@ func main() {
 			fmt.Fprintf(w, "Prometheus frontend is Ready.\n")
 		})
 
-		http.Handle("/", ui.Handler())
+		http.Handle("/", ui.Handler(externalURL))
 
 		g.Add(func() error {
 			level.Info(logger).Log("msg", "Starting web server for metrics", "listen", *listenAddress)
