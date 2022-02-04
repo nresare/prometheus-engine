@@ -123,20 +123,22 @@ func main() {
 			os.Exit(1)
 		}
 
-		server := &http.Server{Addr: *listenAddress}
-		http.Handle("/metrics", promhttp.HandlerFor(metrics, promhttp.HandlerOpts{Registry: metrics}))
-		http.Handle("/api/", forward(logger, targetURL, transport))
+		router := http.NewServeMux()
+		server := &http.Server{Addr: *listenAddress, Handler: wrap(router)}
 
-		http.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
+		router.Handle("/metrics", promhttp.HandlerFor(metrics, promhttp.HandlerOpts{Registry: metrics}))
+		router.Handle("/api/", forward(logger, targetURL, transport))
+
+		router.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, "Prometheus frontend is Healthy.\n")
 		})
-		http.HandleFunc("/-/ready", func(w http.ResponseWriter, r *http.Request) {
+		router.HandleFunc("/-/ready", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, "Prometheus frontend is Ready.\n")
 		})
 
-		http.Handle("/", ui.Handler(externalURL))
+		router.Handle("/", ui.Handler(externalURL))
 
 		g.Add(func() error {
 			level.Info(logger).Log("msg", "Starting web server for metrics", "listen", *listenAddress)
@@ -151,6 +153,13 @@ func main() {
 	if err := g.Run(); err != nil {
 		level.Error(logger).Log("msg", "running reloader failed", "err", err)
 		os.Exit(1)
+	}
+}
+
+func wrap(f http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("Got request with URL %s\n", r.URL)
+		f.ServeHTTP(w, r)
 	}
 }
 
